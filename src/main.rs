@@ -5,11 +5,13 @@ use std::path::Path;
 
 type SplittedCommands<'a> = Vec<Vec<&'a str>>;
 
+/// A program can either be a built in program (such as `cd`) or a generic program.
 enum Program {
     Builtin(Builtin),
     Program,
 }
 
+/// Lists the different kinds of built in programs
 enum Builtin {
     Cd,
     Exit,
@@ -45,6 +47,12 @@ fn main() {
     }
 }
 
+/// Runs a given built in program
+/// # Arguments
+/// * builtin, a `Builtin` that is the program to be run
+/// * args the arguments given to the program
+/// # Returns
+/// The output of the builtin program that has been run
 fn run_builtin(builtin: Builtin, 
                args: SplittedCommands) -> String {
     match builtin {
@@ -59,6 +67,11 @@ fn run_builtin(builtin: Builtin,
     }
 }
 
+/// Runs the builtin program `cd` on a given set of arguments
+/// # Arguments
+/// * args, a slice of slices of the path to go to
+/// # Returns
+/// A string as the output of the program
 fn cd(args: &[&str]) -> String {
     let new_dir = args.get(0).map_or("/", |x| *x);
     let root = Path::new(new_dir);
@@ -69,6 +82,11 @@ fn cd(args: &[&str]) -> String {
     
 }
 
+/// Given a command, returns whether the command is a builtin or a different program.
+/// # Arguments
+/// * `commands`: The command to check (and its arguments)
+/// # Returns
+/// `Result<Program, String>`, where `Program` is the kind of program.
 fn command_type(commands: &SplittedCommands) -> Result<Program, String> {
     let command = commands.get(0);
     if let None = command { return Err(format!("")); }
@@ -82,6 +100,12 @@ fn command_type(commands: &SplittedCommands) -> Result<Program, String> {
     }
 }
 
+/// Given a string of commands, splices them into commands and arguments. Also splices a list of
+/// piped programs into a list of lits of programs and their arguments.
+/// # Arguments
+/// * `commands`: A `&str` that is a string of the format "<command> [args] | [command] [args]".
+/// # Returns
+/// A slice where each list is a program and its arguments.
 fn split_commands(commands: &str) -> SplittedCommands {
     commands.trim()
         .split("|")
@@ -89,11 +113,19 @@ fn split_commands(commands: &str) -> SplittedCommands {
         .collect()
 }
 
+/// Creates a prompt at stdout.
 fn prompt() {
     print!("> ");
     io::stdout().flush().unwrap();
 }
 
+/// Creates a process from a list of commands that can be piped together. Each command and its
+/// arguments are listed in a `Vec<Vec<&str>>`.
+/// # Arguments
+/// * `args`: The list of commands to run. Can either be a single command or a list of lists of
+/// commands to run piped.
+/// # Returns
+/// `Result<Child, String>`, where child is the process.
 fn create_processes(mut args: SplittedCommands) -> Result<Child, String> {
     let mut commands = args.iter_mut().peekable();
     let mut prev_command = Err(String::from("my_shell: command not found"));
@@ -119,6 +151,11 @@ fn create_processes(mut args: SplittedCommands) -> Result<Child, String> {
     prev_command
 }
 
+/// Runs the command of a given child process.
+/// # Arguments
+/// * `command`: The child to run
+/// # Returns
+/// The output of the child.
 fn run_commands(command: Child) -> String {
     match command.wait_with_output() {
         Ok(output) => {
@@ -130,6 +167,9 @@ fn run_commands(command: Child) -> String {
     }
 }
 
+/// Get input from stdin.
+/// # Returns
+/// A `String` from stdin.
 fn stdin_input() -> String {
     let mut buf = String::new();
     io::stdin().read_line(&mut buf).unwrap();
